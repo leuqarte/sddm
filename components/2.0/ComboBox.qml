@@ -32,10 +32,14 @@ FocusScope {
     property color borderColor: "#ababab"
     property color focusColor: "#266294"
     property color hoverColor: "#5692c4"
+    property color menuColor: "white"
     property color textColor: "black"
+
+    property int borderWidth: 1
     property font font
     property alias model: listView.model
     property int index: 0
+    property alias arrowColor: arrow.color
     property alias arrowIcon: arrowIcon.source
 
     property Component rowDelegate: defaultRowDelegate
@@ -46,8 +50,9 @@ FocusScope {
         id: defaultRowDelegate
         Text {
             anchors.fill: parent
-            anchors.margins: 4
+            anchors.margins: 3 + container.borderWidth + (LayoutMirroring.enabled ? arrow.width : 0)
             verticalAlignment: Text.AlignVCenter
+            color: container.textColor
             font: container.font
 
             text: parent.modelItem.name
@@ -63,18 +68,18 @@ FocusScope {
 
         color: container.color
         border.color: container.borderColor
-        border.width: 1
+        border.width: container.borderWidth
 
         Behavior on border.color { ColorAnimation { duration: 100 } }
 
         states: [
             State {
                 name: "hover"; when: mouseArea.containsMouse
-                PropertyChanges { target: main; border.width: 1; border.color: container.hoverColor }
+                PropertyChanges { target: main; border.width: container.borderWidth; border.color: container.hoverColor }
             },
             State {
                 name: "focus"; when: container.activeFocus && !mouseArea.containsMouse
-                PropertyChanges { target: main; border.width: 1; border.color: container.focusColor }
+                PropertyChanges { target: main; border.width: container.borderWidth; border.color: container.focusColor }
             }
         ]
     }
@@ -92,7 +97,7 @@ FocusScope {
     Rectangle {
         id: arrow
         anchors.right: parent.right
-        width: 20; height: parent.height
+        width: 20 + 2*border.width; height: parent.height
 
         border.color: main.border.color
         border.width: main.border.width
@@ -100,6 +105,8 @@ FocusScope {
         Image {
             id: arrowIcon
             anchors.fill: parent
+            anchors.leftMargin: parent.border.width
+            anchors.rightMargin: parent.border.width
             clip: true
             smooth: true
             fillMode: Image.PreserveAspectFit
@@ -144,7 +151,9 @@ FocusScope {
         id: dropDown
         width: container.width; height: 0
         anchors.top: container.bottom
-        anchors.topMargin: -1
+        anchors.topMargin: 0
+
+        color: container.menuColor
 
         clip: true
 
@@ -154,7 +163,7 @@ FocusScope {
             id: myDelegate
 
             Rectangle {
-                width: dropDown.width; height: container.height
+                width: dropDown.width; height: container.height - 2*container.borderWidth
                 color: "transparent"
 
                 Loader {
@@ -182,7 +191,7 @@ FocusScope {
 
         ListView {
             id: listView
-            width: container.width; height: container.height * count
+            width: container.width; height: (container.height - 2*container.borderWidth) * count + container.borderWidth
             delegate: myDelegate
             highlight: Rectangle {
                 anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined;
@@ -192,6 +201,7 @@ FocusScope {
 
         Rectangle {
             anchors.fill: listView
+            anchors.topMargin: -container.borderWidth
             color: "transparent"
             clip: false
             border.color: main.border.color
@@ -201,7 +211,7 @@ FocusScope {
         states: [
             State {
                 name: "visible";
-                PropertyChanges { target: dropDown; height: container.height * listView.count }
+                PropertyChanges { target: dropDown; height: (container.height - 2*container.borderWidth) * listView.count + container.borderWidth}
             }
         ]
     }

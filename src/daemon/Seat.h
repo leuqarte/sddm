@@ -21,6 +21,7 @@
 #define SDDM_SEAT_H
 
 #include <QObject>
+#include <QVector>
 
 namespace SDDM {
     class Display;
@@ -41,10 +42,10 @@ namespace SDDM {
         void displayStopped();
 
     private:
-        QString m_name { "" };
+        QString m_name;
 
-        QList<Display *> m_displays;
-        QList<int> m_terminalIds;
+        QVector<Display *> m_displays;
+        QVector<int> m_terminalIds;
     };
 }
 

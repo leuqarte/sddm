@@ -22,11 +22,11 @@
 #define CONFIGREADER_H
 
 #include <QtCore/QString>
-#include <QtCore/QList>
 #include <QtCore/QTextStream>
 #include <QtCore/QStringList>
 #include <QtCore/QDebug>
 #include <QtCore/QDateTime>
+#include <QtCore/QDir>
 
 #define IMPLICIT_SECTION "General"
 #define UNUSED_VARIABLE_COMMENT "# Unused variable"
@@ -37,10 +37,10 @@
 #define _S(x) QStringLiteral(x)
 
 // config wrapper
-#define Config(name, file, ...) \
+#define Config(name, file, dir, sysDir, ...) \
     class name : public SDDM::ConfigBase, public SDDM::ConfigSection { \
     public: \
-        name() : SDDM::ConfigBase(file), SDDM::ConfigSection(this, IMPLICIT_SECTION) { \
+        name() : SDDM::ConfigBase(file, dir, sysDir), SDDM::ConfigSection(this, QStringLiteral(IMPLICIT_SECTION)) { \
             load(); \
         } \
         void save() { SDDM::ConfigBase::save(nullptr, nullptr); } \
@@ -52,14 +52,14 @@
     }
 // entry wrapper
 #define Entry(name, type, default, description) \
-    SDDM::ConfigEntry<type> name { this, #name, (default), (description) }
+    SDDM::ConfigEntry<type> name { this, QStringLiteral(#name), (default), (description) }
 // section wrapper
 #define Section(name, ...) \
     class name : public SDDM::ConfigSection { \
     public: \
         name (SDDM::ConfigBase *_parent, const QString &_name) : SDDM::ConfigSection(_parent, _name) { } \
         __VA_ARGS__ \
-    } name { this, #name };
+    } name { this, QStringLiteral(#name) };
 
 QTextStream &operator>>(QTextStream &str, QStringList &list);
 QTextStream &operator<<(QTextStream &str, const QStringList &list);
@@ -78,7 +78,9 @@ namespace SDDM {
         virtual void setValue(const QString &str) = 0;
         virtual QString toConfigShort() const = 0;
         virtual QString toConfigFull() const = 0;
+        virtual bool matchesDefault() const = 0;
         virtual bool isDefault() const = 0;
+        virtual bool setDefault() = 0;
     };
 
     class ConfigSection {
@@ -87,6 +89,7 @@ namespace SDDM {
         ConfigEntryBase *entry(const QString &name);
         const ConfigEntryBase *entry(const QString &name) const;
         void save(ConfigEntryBase *entry);
+        void clear();
         const QString &name() const;
         QString toConfigShort() const;
         QString toConfigFull() const;
@@ -108,6 +111,7 @@ namespace SDDM {
             m_description(description),
             m_default(value),
             m_value(value),
+            m_isDefault(true),
             m_parent(parent) {
             m_parent->m_entries[name] = this;
         }
@@ -118,13 +122,19 @@ namespace SDDM {
 
         void set(const T val) {
             m_value = val;
+            m_isDefault = false;
         }
 
-        bool isDefault() const {
+        bool matchesDefault() const {
             return m_value == m_default;
         }
 
+        bool isDefault() const {
+            return m_isDefault;
+        }
+
         bool setDefault() {
+            m_isDefault = true;
             if (m_value == m_default)
                 return false;
             m_value = m_default;
@@ -148,19 +158,20 @@ namespace SDDM {
 
         // specialised for QString
         void setValue(const QString &str) {
+            m_isDefault = false;
             QTextStream in(qPrintable(str));
             in >> m_value;
         }
 
         QString toConfigShort() const {
-            return QString("%1=%2").arg(m_name).arg(value());
+            return QStringLiteral("%1=%2").arg(m_name).arg(value());
         }
 
         QString toConfigFull() const {
             QString str;
-            for (const QString &line : m_description.split('\n'))
-                str.append(QString("# %1\n").arg(line));
-            str.append(QString("%1=%2\n\n").arg(m_name).arg(value()));
+            for (const QString &line : m_description.split(QLatin1Char('\n')))
+                str.append(QStringLiteral("# %1\n").arg(line));
+            str.append(QStringLiteral("%1=%2\n\n").arg(m_name).arg(value()));
             return str;
         }
     private:
@@ -168,27 +179,32 @@ namespace SDDM {
         const QString m_description;
         T m_default;
         T m_value;
+        bool m_isDefault;
         ConfigSection *m_parent;
     };
 
     // Base has to be separate from the Config itself - order of initialization
     class ConfigBase {
     public:
-        ConfigBase(const QString &configPath);
+        ConfigBase(const QString &configPath, const QString &configDir=QString(), const QString &sysConfigDir=QString());
 
         void load();
         void save(const ConfigSection *section = nullptr, const ConfigEntryBase *entry = nullptr);
+        void wipe();
         bool hasUnused() const;
-        const QString &path() const;
         QString toConfigFull() const;
     protected:
         bool m_unusedVariables { false };
         bool m_unusedSections { false };
 
         QString m_path {};
+        QString m_configDir;
+        QString m_sysConfigDir;
         QMap<QString, ConfigSection*> m_sections;
         friend class ConfigSection;
     private:
+        QDateTime dirLatestModifiedTime(const QString &directory);
+        void loadInternal(const QString &filepath);
         QDateTime m_fileModificationTime;
     };
 }

@@ -53,14 +53,14 @@ namespace SDDM {
     /* UPOWER BACKEND                             */
     /**********************************************/
 
-#define UPOWER_SERVICE  QStringLiteral("org.freedesktop.UPower")
-#define UPOWER_PATH     QStringLiteral("/org/freedesktop/UPower")
-#define UPOWER_OBJECT   QStringLiteral("org.freedesktop.UPower")
+const QString UPOWER_PATH = QStringLiteral("/org/freedesktop/UPower");
+const QString UPOWER_SERVICE = QStringLiteral("org.freedesktop.UPower");
+const QString UPOWER_OBJECT = QStringLiteral("org.freedesktop.UPower");
 
     class UPowerBackend : public PowerManagerBackend {
     public:
-        UPowerBackend() {
-            m_interface = new QDBusInterface(UPOWER_SERVICE, UPOWER_PATH, UPOWER_OBJECT, QDBusConnection::systemBus());
+        UPowerBackend(const QString & service, const QString & path, const QString & interface) {
+            m_interface = new QDBusInterface(service, path, interface, QDBusConnection::systemBus());
         }
 
         ~UPowerBackend() {
@@ -73,12 +73,12 @@ namespace SDDM {
             QDBusReply<bool> reply;
 
             // suspend
-            reply = m_interface->call("SuspendAllowed");
+            reply = m_interface->call(QStringLiteral("SuspendAllowed"));
             if (reply.isValid() && reply.value())
                 caps |= Capability::Suspend;
 
             // hibernate
-            reply = m_interface->call("HibernateAllowed");
+            reply = m_interface->call(QStringLiteral("HibernateAllowed"));
             if (reply.isValid() && reply.value())
                 caps |= Capability::Hibernate;
 
@@ -95,11 +95,11 @@ namespace SDDM {
         }
 
         void suspend() const {
-            m_interface->call("Suspend");
+            m_interface->call(QStringLiteral("Suspend"));
         }
 
         void hibernate() const {
-            m_interface->call("Hibernate");
+            m_interface->call(QStringLiteral("Hibernate"));
         }
 
         void hybridSleep() const {
@@ -110,20 +110,24 @@ namespace SDDM {
     };
 
     /**********************************************/
-    /* LOGIN1 BACKEND                             */
+    /* LOGIN1 && ConsoleKit2 BACKEND              */
     /**********************************************/
 
-#define LOGIN1_SERVICE  QStringLiteral("org.freedesktop.login1")
-#define LOGIN1_PATH     QStringLiteral("/org/freedesktop/login1")
-#define LOGIN1_OBJECT   QStringLiteral("org.freedesktop.login1.Manager")
+const QString LOGIN1_SERVICE = QStringLiteral("org.freedesktop.login1");
+const QString LOGIN1_PATH = QStringLiteral("/org/freedesktop/login1");
+const QString LOGIN1_OBJECT = QStringLiteral("org.freedesktop.login1.Manager");
 
-    class Login1Backend : public PowerManagerBackend {
+const QString CK2_SERVICE = QStringLiteral("org.freedesktop.ConsoleKit");
+const QString CK2_PATH = QStringLiteral("/org/freedesktop/ConsoleKit/Manager");
+const QString CK2_OBJECT = QStringLiteral("org.freedesktop.ConsoleKit.Manager");
+
+    class SeatManagerBackend : public PowerManagerBackend {
     public:
-        Login1Backend() {
-            m_interface = new QDBusInterface(LOGIN1_SERVICE, LOGIN1_PATH, LOGIN1_OBJECT, QDBusConnection::systemBus());
+        SeatManagerBackend(const QString & service, const QString & path, const QString & interface) {
+            m_interface = new QDBusInterface(service, path, interface, QDBusConnection::systemBus());
         }
 
-        ~Login1Backend() {
+        ~SeatManagerBackend() {
             delete m_interface;
         }
 
@@ -133,28 +137,28 @@ namespace SDDM {
             QDBusReply<QString> reply;
 
             // power off
-            reply = m_interface->call("CanPowerOff");
-            if (reply.isValid() && (reply.value() == "yes"))
+            reply = m_interface->call(QStringLiteral("CanPowerOff"));
+            if (reply.isValid() && (reply.value() == QLatin1String("yes")))
                 caps |= Capability::PowerOff;
 
             // reboot
-            reply = m_interface->call("CanReboot");
-            if (reply.isValid() && (reply.value() == "yes"))
+            reply = m_interface->call(QStringLiteral("CanReboot"));
+            if (reply.isValid() && (reply.value() == QLatin1String("yes")))
                 caps |= Capability::Reboot;
 
             // suspend
-            reply = m_interface->call("CanSuspend");
-            if (reply.isValid() && (reply.value() == "yes"))
+            reply = m_interface->call(QStringLiteral("CanSuspend"));
+            if (reply.isValid() && (reply.value() == QLatin1String("yes")))
                 caps |= Capability::Suspend;
 
             // hibernate
-            reply = m_interface->call("CanHibernate");
-            if (reply.isValid() && (reply.value() == "yes"))
+            reply = m_interface->call(QStringLiteral("CanHibernate"));
+            if (reply.isValid() && (reply.value() == QLatin1String("yes")))
                 caps |= Capability::Hibernate;
 
             // hybrid sleep
-            reply = m_interface->call("CanHybridSleep");
-            if (reply.isValid() && (reply.value() == "yes"))
+            reply = m_interface->call(QStringLiteral("CanHybridSleep"));
+            if (reply.isValid() && (reply.value() == QLatin1String("yes")))
                 caps |= Capability::HybridSleep;
 
             // return capabilities
@@ -162,24 +166,24 @@ namespace SDDM {
         }
 
         void powerOff() const {
-            m_interface->call("PowerOff", true);
+            m_interface->call(QStringLiteral("PowerOff"), true);
         }
 
         void reboot() const {
             if (!daemonApp->testing())
-                m_interface->call("Reboot", true);
+                m_interface->call(QStringLiteral("Reboot"), true);
         }
 
         void suspend() const {
-            m_interface->call("Suspend", true);
+            m_interface->call(QStringLiteral("Suspend"), true);
         }
 
         void hibernate() const {
-            m_interface->call("Hibernate", true);
+            m_interface->call(QStringLiteral("Hibernate"), true);
         }
 
         void hybridSleep() const {
-            m_interface->call("HybridSleep", true);
+            m_interface->call(QStringLiteral("HybridSleep"), true);
         }
 
     private:
@@ -194,11 +198,15 @@ namespace SDDM {
 
         // check if login1 interface exists
         if (interface->isServiceRegistered(LOGIN1_SERVICE))
-            m_backends << new Login1Backend();
+            m_backends << new SeatManagerBackend(LOGIN1_SERVICE, LOGIN1_PATH, LOGIN1_OBJECT);
+
+        // check if ConsoleKit2 interface exists
+        if (interface->isServiceRegistered(CK2_SERVICE))
+            m_backends << new SeatManagerBackend(CK2_SERVICE, CK2_PATH, CK2_OBJECT);
 
         // check if upower interface exists
         if (interface->isServiceRegistered(UPOWER_SERVICE))
-            m_backends << new UPowerBackend();
+            m_backends << new UPowerBackend(UPOWER_SERVICE, UPOWER_PATH, UPOWER_OBJECT);
     }
 
     PowerManager::~PowerManager() {

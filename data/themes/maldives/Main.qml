@@ -22,13 +22,18 @@
 *
 ***************************************************************************/
 
-import QtQuick ${COMPONENTS_VERSION}
-import SddmComponents ${COMPONENTS_VERSION}
+import QtQuick 2.0
+import SddmComponents 2.0
 
 Rectangle {
     id: container
     width: 640
     height: 480
+
+    LayoutMirroring.enabled: Qt.locale().textDirection == Qt.RightToLeft
+    LayoutMirroring.childrenInherit: true
+
+    property int sessionIndex: session.index
 
     TextConstants { id: textConstants }
 
@@ -41,29 +46,27 @@ Rectangle {
         }
 
         onLoginFailed: {
+            password.text = ""
             errorMessage.color = "red"
             errorMessage.text = textConstants.loginFailed
         }
     }
 
-    Repeater {
-        model: screenModel
-        Background {
-            x: geometry.x; y: geometry.y; width: geometry.width; height:geometry.height
-            source: config.background
-            fillMode: Image.PreserveAspectCrop
-            onStatusChanged: {
-                if (status == Image.Error && source != config.defaultBackground) {
-                    source = config.defaultBackground
-                }
+    Background {
+        anchors.fill: parent
+        source: config.background
+        fillMode: Image.PreserveAspectCrop
+        onStatusChanged: {
+            if (status == Image.Error && source != config.defaultBackground) {
+                source = config.defaultBackground
             }
         }
     }
 
     Rectangle {
-        property variant geometry: screenModel.geometry(screenModel.primary)
-        x: geometry.x; y: geometry.y; width: geometry.width; height: geometry.height
+        anchors.fill: parent
         color: "transparent"
+        //visible: primaryScreen
 
         Clock {
             id: clock
@@ -120,7 +123,7 @@ Rectangle {
 
                         Keys.onPressed: {
                             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                sddm.login(name.text, password.text, session.index)
+                                sddm.login(name.text, password.text, sessionIndex)
                                 event.accepted = true
                             }
                         }
@@ -147,7 +150,7 @@ Rectangle {
 
                         Keys.onPressed: {
                             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                sddm.login(name.text, password.text, session.index)
+                                sddm.login(name.text, password.text, sessionIndex)
                                 event.accepted = true
                             }
                         }
@@ -236,7 +239,7 @@ Rectangle {
                         text: textConstants.login
                         width: parent.btnWidth
 
-                        onClicked: sddm.login(name.text, password.text, session.index)
+                        onClicked: sddm.login(name.text, password.text, sessionIndex)
 
                         KeyNavigation.backtab: layoutBox; KeyNavigation.tab: shutdownButton
                     }

@@ -52,6 +52,7 @@ namespace SDDM {
         Q_OBJECT
     public:
         Private(Auth *parent);
+        ~Private();
         void setSocket(QLocalSocket *socket);
     public slots:
         void dataPending();
@@ -100,7 +101,7 @@ namespace SDDM {
     Auth::SocketServer* Auth::SocketServer::instance() {
         if (!self) {
             self = new SocketServer();
-            self->listen(QString("sddm-auth%1").arg(QUuid::createUuid().toString().replace(QRegExp("[{}]"),"")));
+            self->listen(QStringLiteral("sddm-auth%1").arg(QUuid::createUuid().toString().replace(QRegExp(QStringLiteral("[{}]")), QString())));
         }
         return self;
     }
@@ -113,13 +114,34 @@ namespace SDDM {
             , id(lastId++) {
         SocketServer::instance()->helpers[id] = this;
         QProcessEnvironment env = child->processEnvironment();
-        env.insert("LANG", "C");
+        bool langEmpty = true;
+        QFile localeFile(QStringLiteral("/etc/locale.conf"));
+        if (localeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&localeFile);
+            while (!in.atEnd()) {
+                QStringList parts = in.readLine().split(QLatin1Char('='));
+                if (parts.size() >= 2) {
+                    env.insert(parts[0], parts[1]);
+                    if (parts[0] == QLatin1String("LANG"))
+                        langEmpty = false;
+                }
+            }
+            localeFile.close();
+        }
+        if (langEmpty)
+            env.insert(QStringLiteral("LANG"), QStringLiteral("C"));
         child->setProcessEnvironment(env);
         connect(child, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(childExited(int,QProcess::ExitStatus)));
         connect(child, SIGNAL(error(QProcess::ProcessError)), this, SLOT(childError(QProcess::ProcessError)));
         connect(request, SIGNAL(finished()), this, SLOT(requestFinished()));
         connect(request, SIGNAL(promptsChanged()), parent, SIGNAL(requestChanged()));
     }
+
+    Auth::Private::~Private()
+    {
+        SocketServer::instance()->helpers.remove(id);
+    }
+
 
     void Auth::Private::setSocket(QLocalSocket *socket) {
         this->socket = socket;
@@ -178,7 +200,7 @@ namespace SDDM {
                 break;
             }
             default: {
-                Q_EMIT auth->error(QString("Auth: Unexpected value received: %1").arg(m), ERROR_INTERNAL);
+                Q_EMIT auth->error(QStringLiteral("Auth: Unexpected value received: %1").arg(m), ERROR_INTERNAL);
             }
         }
     }
@@ -320,17 +342,17 @@ namespace SDDM {
 
     void Auth::start() {
         QStringList args;
-        args << "--socket" << SocketServer::instance()->fullServerName();
-        args << "--id" << QString("%1").arg(d->id);
+        args << QStringLiteral("--socket") << SocketServer::instance()->fullServerName();
+        args << QStringLiteral("--id") << QStringLiteral("%1").arg(d->id);
         if (!d->sessionPath.isEmpty())
-            args << "--start" << d->sessionPath;
+            args << QStringLiteral("--start") << d->sessionPath;
         if (!d->user.isEmpty())
-            args << "--user" << d->user;
+            args << QStringLiteral("--user") << d->user;
         if (d->autologin)
-            args << "--autologin";
+            args << QStringLiteral("--autologin");
         if (d->greeter)
-            args << "--greeter";
-        d->child->start(QString("%1/sddm-helper").arg(LIBEXEC_INSTALL_DIR), args);
+            args << QStringLiteral("--greeter");
+        d->child->start(QStringLiteral("%1/sddm-helper").arg(QStringLiteral(LIBEXEC_INSTALL_DIR)), args);
     }
 }
 

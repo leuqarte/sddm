@@ -24,6 +24,7 @@
 #include "DaemonApp.h"
 #include "Display.h"
 #include "XorgDisplayServer.h"
+#include "VirtualTerminal.h"
 
 #include <QDebug>
 #include <QFile>
@@ -57,7 +58,7 @@ namespace SDDM {
         
         if (terminalId == -1) {
                 // find unused terminal
-            terminalId = findUnused(mainConfig.XDisplay.MinimumVT.get(), [&](const int number) {
+            terminalId = findUnused(mainConfig.X11.MinimumVT.get(), [&](const int number) {
                 return m_terminalIds.contains(number);
             });
         }
@@ -107,7 +108,16 @@ namespace SDDM {
         removeDisplay(display);
 
         // restart otherwise
-        if (m_displays.isEmpty())
+        if (m_displays.isEmpty()) {
             createDisplay();
+        }
+        // If there is still a session running on some display,
+        // switch to last display in display vector.
+        // Set vt_auto to true, so let the kernel handle the
+        // vt switch automatically (VT_AUTO).
+        else {
+            int disp = m_displays.last()->terminalId();
+            VirtualTerminal::jumpToVt(disp, true);
+        }
     }
 }

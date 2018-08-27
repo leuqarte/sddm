@@ -2,6 +2,20 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="et">
 <context>
+    <name>PictureBox</name>
+    <message>
+        <source>Press to login</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <source>%1 (Wayland)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>TextConstants</name>
     <message>
         <source>Welcome to %1</source>
@@ -37,7 +51,7 @@
     </message>
     <message>
         <source>Reboot</source>
-        <translation>Taaskäivitamine</translation>
+        <translation>Taaskäivita</translation>
     </message>
     <message>
         <source>Session</source>
@@ -45,7 +59,7 @@
     </message>
     <message>
         <source>Shutdown</source>
-        <translation>Seiskamine</translation>
+        <translation>Seiska</translation>
     </message>
     <message>
         <source>User name</source>

@@ -2,14 +2,28 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="ar">
 <context>
+    <name>PictureBox</name>
+    <message>
+        <source>Press to login</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <source>%1 (Wayland)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>TextConstants</name>
     <message>
         <source>Welcome to %1</source>
-        <translation>مرحبًا في %1</translation>
+        <translation>مرحبًا بك في %1</translation>
     </message>
     <message>
         <source>Warning, Caps Lock is ON!</source>
-        <translation>تحذير، مفتاح Caps Lock ممكّن!</translation>
+        <translation>تحذير، مفتاح Caps Lock مفعّل!</translation>
     </message>
     <message>
         <source>Layout</source>
@@ -33,7 +47,7 @@
     </message>
     <message>
         <source>Enter your username and password</source>
-        <translation>أدخِل اسم المستخدم وكلمة مروره</translation>
+        <translation>أدخل اسم المستخدم وكلمة مروره</translation>
     </message>
     <message>
         <source>Reboot</source>
@@ -53,7 +67,7 @@
     </message>
     <message>
         <source>Select your user and enter password</source>
-        <translation>اختر مستخدمًا وأدخِل كلمة مروره</translation>
+        <translation>اختر مستخدمًا وأدخل كلمة مروره</translation>
     </message>
 </context>
 </TS>

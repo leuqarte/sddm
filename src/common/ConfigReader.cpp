@@ -29,24 +29,27 @@
 #include <QtCore/QFileInfo>
 
 QTextStream &operator>>(QTextStream &str, QStringList &list)  {
-    QStringList tempList = str.readLine().split(",");
     list.clear();
-    foreach(const QString &s, tempList)
-        if (!s.trimmed().isEmpty())
-            list.append(s.trimmed());
+
+    QString line = str.readLine();
+
+    Q_FOREACH (const QStringRef &s, line.splitRef(QLatin1Char(','))) {
+        QStringRef trimmed = s.trimmed();
+        if (!trimmed.isEmpty())
+            list.append(trimmed.toString());
+    }
+
     return str;
 }
 
 QTextStream &operator<<(QTextStream &str, const QStringList &list) {
-    str << list.join(",");
+    str << list.join(QLatin1Char(','));
     return str;
 }
 
 QTextStream &operator>>(QTextStream &str, bool &val) {
-    if (0 == str.readLine().trimmed().compare("true", Qt::CaseInsensitive))
-        val = true;
-    else
-        val = false;
+    QString line = str.readLine();
+    val = (0 == QStringRef(&line).trimmed().compare(QLatin1String("true"), Qt::CaseInsensitive));
     return str;
 }
 
@@ -71,14 +74,16 @@ namespace SDDM {
     }
 
     ConfigEntryBase *ConfigSection::entry(const QString &name) {
-        if (m_entries.contains(name))
-            return m_entries[name];
+        auto it = m_entries.find(name);
+        if (it != m_entries.end())
+            return it.value();
         return nullptr;
     }
 
     const ConfigEntryBase *ConfigSection::entry(const QString &name) const {
-        if (m_entries.contains(name))
-            return m_entries[name];
+        auto it = m_entries.find(name);
+        if (it != m_entries.end())
+            return it.value();
         return nullptr;
     }
 
@@ -95,24 +100,30 @@ namespace SDDM {
         m_parent->save(this, entry);
     }
 
+    void ConfigSection::clear() {
+        for (auto it : m_entries) {
+            it->setDefault();
+        }
+    }
+
     QString ConfigSection::toConfigFull() const {
-        QString final = QString("[%1]\n").arg(m_name);
+        QString final = QStringLiteral("[%1]\n").arg(m_name);
         for (const ConfigEntryBase *entry : m_entries)
             final.append(entry->toConfigFull());
         return final;
     }
 
     QString ConfigSection::toConfigShort() const {
-        return QString("[%1]").arg(name());
+        return QStringLiteral("[%1]").arg(name());
     }
 
 
 
-    ConfigBase::ConfigBase(const QString &configPath) : m_path(configPath) {
-    }
-
-    const QString &ConfigBase::path() const {
-        return m_path;
+    ConfigBase::ConfigBase(const QString &configPath, const QString &configDir, const QString &sysConfigDir) :
+        m_path(configPath),
+        m_configDir(configDir),
+        m_sysConfigDir(sysConfigDir)
+    {
     }
 
     bool ConfigBase::hasUnused() const {
@@ -123,46 +134,86 @@ namespace SDDM {
         QString ret;
         for (ConfigSection *s : m_sections) {
             ret.append(s->toConfigFull());
-            ret.append('\n');
+            ret.append(QLatin1Char('\n'));
         }
         return ret;
     }
 
-    void ConfigBase::load() {
-        // first check if there's at least anything to read, otherwise stick to default values
-        if (!QFile::exists(m_path))
-            return;
+    void ConfigBase::load()
+    {
+        //order of priority from least influence to most influence, is
+        // * m_sysConfigDir (system settings /usr/lib/sddm/sddm.conf.d/) in alphabetical order
+        // * m_configDir (user settings in /etc/sddm.conf.d/) in alphabetical order
+        // * m_path (classic fallback /etc/sddm.conf)
 
-        QString currentSection = IMPLICIT_SECTION;
+        QStringList files;
+        QDateTime latestModificationTime = QFileInfo(m_path).lastModified();
 
-        QFile in(m_path);
-        QDateTime modificationTime = QFileInfo(in).lastModified();
-        if (modificationTime <= m_fileModificationTime) {
+        if (!m_sysConfigDir.isEmpty()) {
+            //include the configDir in modification time so we also reload on any files added/removed
+            QDir dir(m_sysConfigDir);
+            if (dir.exists()) {
+                latestModificationTime = std::max(latestModificationTime,  QFileInfo(m_sysConfigDir).lastModified());
+                foreach (const QFileInfo &file, dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::LocaleAware)) {
+                    files << (file.absoluteFilePath());
+                    latestModificationTime = std::max(latestModificationTime, file.lastModified());
+                }
+            }
+        }
+        if (!m_configDir.isEmpty()) {
+            //include the configDir in modification time so we also reload on any files added/removed
+            QDir dir(m_configDir);
+            if (dir.exists()) {
+                latestModificationTime = std::max(latestModificationTime,  QFileInfo(m_configDir).lastModified());
+                foreach (const QFileInfo &file, dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::LocaleAware)) {
+                    files << (file.absoluteFilePath());
+                    latestModificationTime = std::max(latestModificationTime, file.lastModified());
+                }
+            }
+        }
+
+        files << m_path;
+
+        if (latestModificationTime <= m_fileModificationTime) {
             return;
         }
-        m_fileModificationTime = modificationTime;
+        m_fileModificationTime = latestModificationTime;
 
-        in.open(QIODevice::ReadOnly);
+        foreach (const QString &filepath, files) {
+            loadInternal(filepath);
+        }
+    }
+
+
+    void ConfigBase::loadInternal(const QString &filepath) {
+        QString currentSection = QStringLiteral(IMPLICIT_SECTION);
+
+        QFile in(filepath);
+
+        if (!in.open(QIODevice::ReadOnly))
+            return;
         while (!in.atEnd()) {
-            QString line = in.readLine().trimmed();
+            QString line = QString::fromUtf8(in.readLine());
+            QStringRef lineRef = QStringRef(&line).trimmed();
             // get rid of comments first
-            line = line.left(line.indexOf('#')).trimmed();
+            lineRef = lineRef.left(lineRef.indexOf(QLatin1Char('#'))).trimmed();
 
             // value assignment
-            int separatorPosition = line.indexOf('=');
+            int separatorPosition = lineRef.indexOf(QLatin1Char('='));
             if (separatorPosition >= 0) {
-                QString name = line.left(separatorPosition).trimmed();
-                QString value = line.mid(separatorPosition + 1).trimmed();
+                QString name = lineRef.left(separatorPosition).trimmed().toString();
+                QStringRef value = lineRef.mid(separatorPosition + 1).trimmed();
 
-                if (m_sections.contains(currentSection) && m_sections[currentSection]->entry(name))
-                    m_sections[currentSection]->entry(name)->setValue(value);
+                auto sectionIterator = m_sections.constFind(currentSection);
+                if (sectionIterator != m_sections.constEnd() && sectionIterator.value()->entry(name))
+                    sectionIterator.value()->entry(name)->setValue(value.toString());
                 else
                     // if we don't have such member in the config, nag about it
                     m_unusedVariables = true;
             }
             // section start
-            else if (line.startsWith('[') && line.endsWith(']'))
-                currentSection = line.mid(1, line.length() - 2);
+            else if (lineRef.startsWith(QLatin1Char('[')) && lineRef.endsWith(QLatin1Char(']')))
+                currentSection = lineRef.mid(1, lineRef.length() - 2).toString();
         }
     }
 
@@ -170,34 +221,34 @@ namespace SDDM {
         // to know if we should overwrite the config or not
         bool changed = false;
         // stores the order of the loaded sections
-        // every one could be there only once - if it occurs more times in the config, the occurences are merged
-        QList<const ConfigSection*> sectionOrder;
+        // each one could be there only once - if it occurs more times in the config, the occurrences are merged
+        QVector<const ConfigSection*> sectionOrder;
         // the actual bytearray data for every section
-        QMap<const ConfigSection*, QByteArray> sectionData;
+        QHash<const ConfigSection*, QByteArray> sectionData;
         // map of nondefault entries which should be saved if they are not found in the current config file
-        QMultiMap<const ConfigSection*, const ConfigEntryBase*> remainingEntries;
+        QMultiHash<const ConfigSection*, const ConfigEntryBase*> remainingEntries;
 
 
         /*
          * Initialization of the map of nondefault values to be saved
          */
         if (section) {
-            if (entry && !entry->isDefault())
+            if (entry && !entry->matchesDefault())
                 remainingEntries.insert(section, entry);
             else
                 for (const ConfigEntryBase *b : section->entries().values())
-                    if (!b->isDefault())
+                    if (!b->matchesDefault())
                         remainingEntries.insert(section, b);
         }
         else {
             for (const ConfigSection *s : m_sections)
                 for (const ConfigEntryBase *b : s->entries().values())
-                    if (!b->isDefault())
+                    if (!b->matchesDefault())
                         remainingEntries.insert(s, b);
         }
 
         // initialize the current section - General, usually
-        const ConfigSection *currentSection = m_sections[IMPLICIT_SECTION];
+        const ConfigSection *currentSection = m_sections.value(QStringLiteral(IMPLICIT_SECTION));
 
         // stuff to store the pre-section stuff (comments) to the start of the right section, not the end of the previous one
         QByteArray junk;
@@ -221,18 +272,18 @@ namespace SDDM {
         QFile file(m_path);
         file.open(QIODevice::ReadOnly); // first just for reading
         while (!file.atEnd()) {
-            QString line = file.readLine();
+            const QString line = QString::fromUtf8(file.readLine());
             // get rid of comments first
-            QString trimmedLine = line.left(line.indexOf('#')).trimmed();
-            QString comment;
-            if (line.indexOf('#') >= 0)
-                comment = line.mid(line.indexOf('#')).trimmed();
+            QStringRef trimmedLine = line.leftRef(line.indexOf(QLatin1Char('#'))).trimmed();
+            QStringRef comment;
+            if (line.indexOf(QLatin1Char('#')) >= 0)
+                comment = line.midRef(line.indexOf(QLatin1Char('#'))).trimmed();
 
             // value assignment
-            int separatorPosition = trimmedLine.indexOf('=');
+            int separatorPosition = trimmedLine.indexOf(QLatin1Char('='));
             if (separatorPosition >= 0) {
-                QString name = trimmedLine.left(separatorPosition).trimmed();
-                QString value = trimmedLine.mid(separatorPosition + 1).trimmed();
+                QString name = trimmedLine.left(separatorPosition).trimmed().toString();
+                QStringRef value = trimmedLine.mid(separatorPosition + 1).trimmed();
 
                 if (currentSection && currentSection->entry(name)) {
                     // this monstrous condition checks the parameters if only one entry/section should be saved
@@ -240,7 +291,7 @@ namespace SDDM {
                         (!entry && section && section->name() == currentSection->name()) ||
                         value != currentSection->entry(name)->value()) {
                         changed = true;
-                        writeSectionData(QString("%1=%2 %3\n").arg(name).arg(currentSection->entry(name)->value()).arg(comment));
+                        writeSectionData(QStringLiteral("%1=%2 %3\n").arg(name).arg(currentSection->entry(name)->value()).arg(comment.toString()));
                     }
                     else
                         writeSectionData(line);
@@ -249,15 +300,16 @@ namespace SDDM {
                 else {
                     if (currentSection)
                         m_unusedVariables = true;
-                    writeSectionData(QString("%1 %2\n").arg(trimmedLine).arg(UNUSED_VARIABLE_COMMENT));
+                    writeSectionData(QStringLiteral("%1 %2\n").arg(trimmedLine.toString()).arg(QStringLiteral(UNUSED_VARIABLE_COMMENT)));
                 }
             }
 
             // section start
-            else if (trimmedLine.startsWith('[') && trimmedLine.endsWith(']')) {
-                QString name = trimmedLine.mid(1, trimmedLine.length() - 2);
-                if (m_sections.contains(name)) {
-                    currentSection = m_sections[name];
+            else if (trimmedLine.startsWith(QLatin1Char('[')) && trimmedLine.endsWith(QLatin1Char(']'))) {
+                const QString name = trimmedLine.mid(1, trimmedLine.length() - 2).toString();
+                auto sectionIterator = m_sections.constFind(name);
+                if (sectionIterator != m_sections.constEnd()) {
+                    currentSection = sectionIterator.value();
                     if (!sectionOrder.contains(currentSection))
                         writeSectionData(line);
                 }
@@ -270,7 +322,7 @@ namespace SDDM {
 
             // other stuff, like comments and whatnot
             else {
-                if (line != UNUSED_SECTION_COMMENT)
+                if (line != QStringLiteral(UNUSED_SECTION_COMMENT))
                     collectJunk(line);
             }
         }
@@ -281,7 +333,7 @@ namespace SDDM {
             currentSection = it.key();
             if (!sectionOrder.contains(currentSection))
                 writeSectionData(currentSection->toConfigShort());
-            writeSectionData("\n");
+            writeSectionData(QStringLiteral("\n"));
             writeSectionData(it.value()->toConfigFull());
         }
 
@@ -289,14 +341,20 @@ namespace SDDM {
         if (changed) {
             file.open(QIODevice::WriteOnly | QIODevice::Truncate);
             for (const ConfigSection *s : sectionOrder)
-                file.write(sectionData[s]);
+                file.write(sectionData.value(s));
 
             if (sectionData.contains(nullptr)) {
                 file.write("\n");
                 file.write(UNUSED_SECTION_COMMENT);
-                file.write(sectionData[nullptr].trimmed());
+                file.write(sectionData.value(nullptr).trimmed());
                 file.write("\n");
             }
+        }
+    }
+
+    void ConfigBase::wipe() {
+        for (auto it : m_sections) {
+            it->clear();
         }
     }
 }

@@ -1,5 +1,6 @@
 /*
  * Session process wrapper
+ * Copyright (C) 2015 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
  * Copyright (C) 2014 Martin Bříza <mbriza@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -39,12 +40,25 @@ namespace SDDM {
         void setPath(const QString &path);
         QString path() const;
 
+        /*!
+         \brief Sets m_cachedProcessId. Needed for getting the PID of a finished UserSession
+                and calling HelperApp::utmpLogout
+         \param pid  The process ID
+        */
+        void setCachedProcessId(qint64 pid);
+
+        /*!
+         \brief Gets m_cachedProcessId
+         \return  The cached process ID
+        */
+        qint64 cachedProcessId();
+
     protected:
-        void bail(int status);
         void setupChildProcess();
 
     private:
         QString m_path { };
+        qint64 m_cachedProcessId;
     };
 }
 

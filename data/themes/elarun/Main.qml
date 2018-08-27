@@ -23,12 +23,17 @@
 *
 ***************************************************************************/
 
-import QtQuick ${COMPONENTS_VERSION}
-import SddmComponents ${COMPONENTS_VERSION}
+import QtQuick 2.0
+import SddmComponents 2.0
 
 Rectangle {
     width: 640
     height: 480
+
+    LayoutMirroring.enabled: Qt.locale().textDirection == Qt.RightToLeft
+    LayoutMirroring.childrenInherit: true
+
+    property int sessionIndex: session.index
 
     TextConstants { id: textConstants }
 
@@ -37,27 +42,25 @@ Rectangle {
         onLoginSucceeded: {
         }
         onLoginFailed: {
+            pw_entry.text = ""
         }
     }
 
-    Repeater {
-        model: screenModel
-        Background {
-            x: geometry.x; y: geometry.y; width: geometry.width; height:geometry.height
-            source: config.background
-            fillMode: Image.PreserveAspectCrop
-            onStatusChanged: {
-                if (status == Image.Error && source != config.defaultBackground) {
-                    source = config.defaultBackground
-                }
+    Background {
+        anchors.fill: parent
+        source: config.background
+        fillMode: Image.PreserveAspectCrop
+        onStatusChanged: {
+            if (status == Image.Error && source != config.defaultBackground) {
+                source = config.defaultBackground
             }
         }
     }
 
     Rectangle {
-        property variant geometry: screenModel.geometry(screenModel.primary)
-        x: geometry.x; y: geometry.y; width: geometry.width; height: geometry.height
+        anchors.fill: parent
         color: "transparent"
+        //visible: primaryScreen
 
         Rectangle {
             width: 416; height: 262
@@ -131,7 +134,7 @@ Rectangle {
 
                             Keys.onPressed: {
                                 if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    sddm.login(user_entry.text, pw_entry.text, menu_session.index)
+                                    sddm.login(user_entry.text, pw_entry.text, sessionIndex)
                                     event.accepted = true
                                 }
                             }
@@ -147,7 +150,7 @@ Rectangle {
 
                     source: "images/login_normal.png"
 
-                    onClicked: sddm.login(user_entry.text, pw_entry.text, menu_session.index)
+                    onClicked: sddm.login(user_entry.text, pw_entry.text, sessionIndex)
 
                     KeyNavigation.backtab: pw_entry; KeyNavigation.tab: session_button
                 }
@@ -163,14 +166,6 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
 
                         spacing: 8
-
-                        ImageButton {
-                            id: session_button
-                            source: "images/session_normal.png"
-                            onClicked: if (menu_session.state === "visible") menu_session.state = ""; else menu_session.state = "visible"
-
-                            KeyNavigation.backtab: login_button; KeyNavigation.tab: system_button
-                        }
 
                         ImageButton {
                             id: system_button
@@ -207,27 +202,26 @@ Rectangle {
                         }
                     }
 
+                    Timer {
+                        id: time
+                        interval: 100
+                        running: true
+                        repeat: true
+
+                        onTriggered: {
+                            dateTime.text = Qt.formatDateTime(new Date(), "dddd, dd MMMM yyyy HH:mm AP")
+                        }
+                    }
+
                     Text {
-                        id: time_label
+                        id: dateTime
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-
-                        text: Qt.formatDateTime(new Date(), "dddd, dd MMMM yyyy HH:mm AP")
-
                         horizontalAlignment: Text.AlignRight
 
                         color: "#0b678c"
                         font.bold: true
                         font.pixelSize: 12
-                    }
-
-                    Menu {
-                        id: menu_session
-                        width: 200; height: 0
-                        anchors.top: buttonRow.bottom; anchors.left: buttonRow.left
-
-                        model: sessionModel
-                        index: sessionModel.lastIndex
                     }
                 }
             }

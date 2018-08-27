@@ -1,15 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="de">
+<TS version="2.1" language="de">
+<context>
+    <name>PictureBox</name>
+    <message>
+        <source>Press to login</source>
+        <translation>Zum Anmelden hier klicken</translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <source>%1 (Wayland)</source>
+        <translation>%1 (Wayland)</translation>
+    </message>
+</context>
 <context>
     <name>TextConstants</name>
     <message>
         <source>Welcome to %1</source>
-        <translation>Willkommen zu %1</translation>
+        <translation>Willkommen auf %1</translation>
     </message>
     <message>
         <source>Warning, Caps Lock is ON!</source>
-        <translation>Achtung, dauerhafte Großschreibung ist aktiviert!</translation>
+        <translation>Achtung, Feststelltaste ist aktiviert!</translation>
     </message>
     <message>
         <source>Layout</source>
@@ -40,6 +54,14 @@
         <translation>Neustarten</translation>
     </message>
     <message>
+        <source>Suspend</source>
+        <translation>Ruhezustand</translation>
+    </message>
+    <message>
+        <source>Hibernate</source>
+        <translation>Tiefschlaf</translation>
+    </message>
+    <message>
         <source>Session</source>
         <translation>Sitzung</translation>
     </message>
@@ -52,8 +74,16 @@
         <translation>Benutzername</translation>
     </message>
     <message>
+        <source>Enter your username</source>
+        <translation>Bitte Benutzername eingeben</translation>
+    </message>
+    <message>
+        <source>Enter your password</source>
+        <translation>Bitte Passwort eingeben</translation>
+    </message>
+    <message>
         <source>Select your user and enter password</source>
-        <translation>Benutzername auswählen und Passwort eingeben</translation>
+        <translation>Benutzer auswählen und Passwort eingeben</translation>
     </message>
 </context>
 </TS>

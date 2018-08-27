@@ -45,10 +45,10 @@ namespace SDDM {
 
         // copy it to the env map
         for (int i = 0; envlist[i] != nullptr; ++i) {
-            QString s(envlist[i]);
+            QString s = QString::fromLocal8Bit(envlist[i]);
 
             // find equal sign
-            int index = s.indexOf('=');
+            int index = s.indexOf(QLatin1Char('='));
 
             // add to the hash
             if (index != -1)
@@ -104,7 +104,8 @@ namespace SDDM {
         if (m_result != PAM_SUCCESS) {
             qWarning() << "[PAM] openSession:" << pam_strerror(m_handle, m_result);
         }
-        return m_result == PAM_SUCCESS;
+        m_open = m_result == PAM_SUCCESS;
+        return m_open;
     }
 
     bool PamHandle::closeSession() {
@@ -113,6 +114,10 @@ namespace SDDM {
             qWarning() << "[PAM] closeSession:" << pam_strerror(m_handle, m_result);
         }
         return m_result == PAM_SUCCESS;
+    }
+
+    bool PamHandle::isOpen() const {
+        return m_open;
     }
 
     bool PamHandle::setItem(int item_type, const void* item) {
@@ -169,7 +174,7 @@ namespace SDDM {
     }
 
     QString PamHandle::errorString() {
-        return pam_strerror(m_handle, m_result);
+        return QString::fromLocal8Bit(pam_strerror(m_handle, m_result));
     }
 
     PamHandle::PamHandle(PamBackend *parent) {

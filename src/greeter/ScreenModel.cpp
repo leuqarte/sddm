@@ -25,24 +25,13 @@
 #include <QScreen>
 
 namespace SDDM {
-    class Screen {
-    public:
-        QString name;
-        QRect geometry;
-    };
-
-    typedef std::shared_ptr<Screen> ScreenPtr;
-
     class ScreenModelPrivate {
     public:
-        QList<ScreenPtr> screens;
-        QRect geometry;
-        int primary { 0 };
+        QScreen *screen { nullptr };
     };
 
-    ScreenModel::ScreenModel(QObject *parent) : QAbstractListModel(parent), d(new ScreenModelPrivate()) {
-        connect(QGuiApplication::instance(), SIGNAL(screenAdded(QScreen*)), this, SLOT(onScreenAdded(QScreen*)));
-        initScreens(true);
+    ScreenModel::ScreenModel(QScreen *screen, QObject *parent) : QAbstractListModel(parent), d(new ScreenModelPrivate()) {
+        d->screen = screen;
     }
 
     ScreenModel::~ScreenModel() {
@@ -52,93 +41,37 @@ namespace SDDM {
     QHash<int, QByteArray> ScreenModel::roleNames() const {
         // set role names
         QHash<int, QByteArray> roleNames;
-        roleNames[NameRole] = "name";
-        roleNames[GeometryRole] = "geometry";
+        roleNames[NameRole] = QByteArrayLiteral("name");
+        roleNames[GeometryRole] = QByteArrayLiteral("geometry");
         return roleNames;
     }
 
     int ScreenModel::primary() const {
-        return d->primary;
+        // This used to return the index of the primary screen, since this model
+        // always have just one screen it should return 0 if it's primary or -1.
+        return d->screen == QGuiApplication::primaryScreen() ? 0 : -1;
     }
 
     const QRect ScreenModel::geometry(int index) const {
-        // return total geometry
-        if (index == -1)
-            return d->geometry;
-
-        if (index < 0 || index >= d->screens.count())
-            return QRect();
-
-        return d->screens.at(index)->geometry;
-    }
-
-    void ScreenModel::onScreenAdded(QScreen *scrn) {
-        // Recive screen updates
-        connect(scrn, SIGNAL(geometryChanged(const QRect &)), this, SLOT(onScreenChanged()));
-        onScreenChanged();
-    }
-
-    void ScreenModel::onScreenChanged() {
-        initScreens(false);
+        Q_UNUSED(index);
+        return QRect(QPoint(0, 0), d->screen->geometry().size());
     }
 
     int ScreenModel::rowCount(const QModelIndex &parent) const {
-        return d->screens.length();
+        return 1;
     }
 
     QVariant ScreenModel::data(const QModelIndex &index, int role) const {
-        if (index.row() < 0 || index.row() >= d->screens.count())
+        if (index.row() < 0 || index.row() >= 1)
             return QVariant();
-
-        // get screen
-        ScreenPtr screen = d->screens[index.row()];
 
         // return correct value
         if (role == NameRole)
-            return screen->name;
+            return d->screen->name();
         if (role == GeometryRole)
-            return screen->geometry;
+            return QRect(QPoint(0, 0), d->screen->geometry().size());
 
         // return empty value
         return QVariant();
     }
-
-    void ScreenModel::initScreens(bool first) {
-        // Clear
-        beginResetModel();
-        d->geometry = QRect();
-        d->primary = 0;
-        d->screens.clear();
-
-#if 0
-        // fake model for testing
-        d->geometry = QRect(0, 0, 1920, 1080);
-        d->primary = 1;
-        d->screens << ScreenPtr { new Screen { "First", QRect(0, 0, 300, 300) } }
-                   << ScreenPtr { new Screen { "Second", QRect(300, 0, 1320, 742) } }
-                   << ScreenPtr { new Screen { "Third", QRect(1620, 0, 300, 300) } };
-        return;
-#endif
-
-        QList<QScreen *> screens = QGuiApplication::screens();
-        for (int i = 0; i < screens.size(); ++i) {
-            QScreen *screen = screens.at(i);
-            // add to the screens list
-            d->screens << ScreenPtr { new Screen { QString("Screen %1").arg(i + 1), screen->geometry() } };
-            // extend available geometry
-            d->geometry = d->geometry.united(screen->geometry());
-            // check if primary
-            if (screen == QGuiApplication::primaryScreen())
-                d->primary = i;
-
-            if (first) {
-                // Recive screen updates
-                connect(screen, SIGNAL(geometryChanged(const QRect &)), this, SLOT(onScreenChanged()));
-            }
-        }
-        endResetModel();
-
-        emit primaryChanged();
-    }
-
 }

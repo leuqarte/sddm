@@ -26,27 +26,30 @@
 
 #include "ConfigReader.h"
 
-#define CONF_FILE "test.conf"
-#define CONF_FILE_COPY "test_copy.conf"
+#define CONF_FILE QStringLiteral("test.conf")
+#define CONF_DIR QStringLiteral("testconfdir")
+#define SYS_CONF_DIR QStringLiteral("testconfdir2")
+#define CONF_FILE_COPY QStringLiteral("test_copy.conf")
 
-#define TEST_STRING_1 "Test Variable Initial String"
+#define TEST_STRING_1_PLAIN "Test Variable Initial String"
+#define TEST_STRING_1 QStringLiteral(TEST_STRING_1_PLAIN)
 #define TEST_INT_1 12345
-#define TEST_STRINGLIST_1 {"String1", "String2"}
+#define TEST_STRINGLIST_1 {QStringLiteral("String1"), QStringLiteral("String2")}
 #define TEST_BOOL_1 true
 
-Config (TestConfig, CONF_FILE,
+Config (TestConfig, CONF_FILE, CONF_DIR, SYS_CONF_DIR,
     enum CustomType {
         FOO,
         BAR,
         BAZ
     };
-    Entry(    String,         QString,               _S(TEST_STRING_1), _S("Test String Description"));
+    Entry(    String,         QString,         _S(TEST_STRING_1_PLAIN), _S("Test String Description"));
     Entry(       Int,             int,                      TEST_INT_1, _S("Test Integer Description"));
     Entry(StringList,     QStringList,  QStringList(TEST_STRINGLIST_1), _S("Test StringList Description"));
     Entry(   Boolean,            bool,                     TEST_BOOL_1, _S("Test Boolean Description"));
     Entry(    Custom,      CustomType,                             FOO, _S("Custom type imitating NumState"));
     Section(Section,
-        Entry(    String,         QString,               _S(TEST_STRING_1), _S("Test String Description"));
+        Entry(    String,         QString,         _S(TEST_STRING_1_PLAIN), _S("Test String Description"));
         Entry(       Int,             int,                      TEST_INT_1, _S("Test Integer Description"));
         Entry(StringList,     QStringList,  QStringList(TEST_STRINGLIST_1), _S("Test StringList Description"));
         Entry(   Boolean,            bool,                     TEST_BOOL_1, _S("Test Boolean Description"));
@@ -55,9 +58,9 @@ Config (TestConfig, CONF_FILE,
 
 inline QTextStream& operator>>(QTextStream &str, TestConfig::CustomType &state) {
     QString text = str.readLine().trimmed();
-    if (text.compare("foo", Qt::CaseInsensitive) == 0)
+    if (text.compare(QLatin1String("foo"), Qt::CaseInsensitive) == 0)
         state = TestConfig::FOO;
-    else if (text.compare("bar", Qt::CaseInsensitive) == 0)
+    else if (text.compare(QLatin1String("bar"), Qt::CaseInsensitive) == 0)
         state = TestConfig::BAR;
     else
         state = TestConfig::BAZ;
@@ -90,6 +93,7 @@ private slots:
     void LineChanges();
     void CustomEnum();
     void RightOnInit();
+    void RightOnInitDir();
     void FileChanged();
 
 private:

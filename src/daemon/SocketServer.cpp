@@ -1,4 +1,5 @@
 /***************************************************************************
+* Copyright (c) 2015 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 * Copyright (c) 2013 Abdurrahman AVCI <abdurrahmanavci@gmail.com>
 *
 * This program is free software; you can redistribute it and/or modify
@@ -42,7 +43,7 @@ namespace SDDM {
         if (m_server)
             return false;
 
-        QString socketName = QString("sddm-%1-%2").arg(displayName).arg(generateName(6));
+        QString socketName = QStringLiteral("sddm-%1-%2").arg(displayName).arg(generateName(6));
 
         // log message
         qDebug() << "Socket server starting...";
@@ -132,7 +133,8 @@ namespace SDDM {
                 qDebug() << "Message received from greeter: Login";
 
                 // read username, pasword etc.
-                QString user, password, session;
+                QString user, password, filename;
+                Session session;
                 input >> user >> password >> session;
 
                 // emit signal

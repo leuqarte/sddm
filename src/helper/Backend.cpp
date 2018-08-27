@@ -23,6 +23,7 @@
 
 #include "backend/PamBackend.h"
 #include "backend/PasswdBackend.h"
+#include "Configuration.h"
 #include "UserSession.h"
 
 #include <QtCore/QProcessEnvironment>
@@ -57,16 +58,25 @@ namespace SDDM {
         pw = getpwnam(qPrintable(qobject_cast<HelperApp*>(parent())->user()));
         if (pw) {
             QProcessEnvironment env = m_app->session()->processEnvironment();
-            env.insert("HOME", pw->pw_dir);
-            env.insert("PWD", pw->pw_dir);
-            env.insert("SHELL", pw->pw_shell);
-            env.insert("USER", pw->pw_name);
-            env.insert("LOGNAME", pw->pw_name);
-            if (env.contains("DISPLAY") && !env.contains("XAUTHORITY"))
-                env.insert("XAUTHORITY", QString("%1/.Xauthority").arg(pw->pw_dir));
+            env.insert(QStringLiteral("HOME"), QString::fromLocal8Bit(pw->pw_dir));
+            env.insert(QStringLiteral("PWD"), QString::fromLocal8Bit(pw->pw_dir));
+            env.insert(QStringLiteral("SHELL"), QString::fromLocal8Bit(pw->pw_shell));
+            env.insert(QStringLiteral("USER"), QString::fromLocal8Bit(pw->pw_name));
+            env.insert(QStringLiteral("LOGNAME"), QString::fromLocal8Bit(pw->pw_name));
+            if (env.contains(QStringLiteral("DISPLAY")) && !env.contains(QStringLiteral("XAUTHORITY"))) {
+                // determine Xauthority path
+                QString value = QStringLiteral("%1/%2")
+                        .arg(QString::fromLocal8Bit(pw->pw_dir))
+                        .arg(mainConfig.X11.UserAuthFile.get());
+                env.insert(QStringLiteral("XAUTHORITY"), value);
+            }
             // TODO: I'm fairly sure this shouldn't be done for PAM sessions, investigate!
             m_app->session()->setProcessEnvironment(env);
         }
         return m_app->session()->start();
+    }
+
+    bool Backend::closeSession() {
+        return true;
     }
 }

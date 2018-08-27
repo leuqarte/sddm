@@ -1,4 +1,5 @@
 /***************************************************************************
+* Copyright (c) 2015-2016 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 * Copyright (c) 2013 Abdurrahman AVCI <abdurrahmanavci@gmail.com>
 *
 * This program is free software; you can redistribute it and/or modify
@@ -20,6 +21,8 @@
 #ifndef SDDM_SESSIONMODEL_H
 #define SDDM_SESSIONMODEL_H
 
+#include "Session.h"
+
 #include <QAbstractListModel>
 
 #include <QHash>
@@ -33,7 +36,9 @@ namespace SDDM {
         Q_PROPERTY(int lastIndex READ lastIndex CONSTANT)
     public:
         enum SessionRole {
-            FileRole = Qt::UserRole + 1,
+            DirectoryRole = Qt::UserRole + 1,
+            FileRole,
+            TypeRole,
             NameRole,
             ExecRole,
             CommentRole
@@ -51,6 +56,8 @@ namespace SDDM {
 
     private:
         SessionModelPrivate *d { nullptr };
+
+        void populate(Session::Type type, const QString &path);
     };
 }
 

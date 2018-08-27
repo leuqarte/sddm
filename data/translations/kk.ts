@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="kk">
+<TS version="2.1" language="kk">
+<context>
+    <name>PictureBox</name>
+    <message>
+        <source>Press to login</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <source>%1 (Wayland)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
 <context>
     <name>TextConstants</name>
     <message>

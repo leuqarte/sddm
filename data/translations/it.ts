@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="it">
+<TS version="2.1" language="it">
+<context>
+    <name>PictureBox</name>
+    <message>
+        <source>Press to login</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <source>%1 (Wayland)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
 <context>
     <name>TextConstants</name>
     <message>
@@ -21,7 +35,7 @@
     </message>
     <message>
         <source>Login failed</source>
-        <translation>Accesso fallito</translation>
+        <translation>Accesso non riuscito</translation>
     </message>
     <message>
         <source>Login succeeded</source>

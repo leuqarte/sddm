@@ -32,8 +32,9 @@ FocusScope {
     property alias borderColor: txtMain.borderColor
     property alias focusColor: txtMain.focusColor
     property alias hoverColor: txtMain.hoverColor
+    property alias radius: txtMain.radius
     property alias font: txtMain.font
-    property alias textColor: txtMain.color
+    property alias textColor: txtMain.textColor
     property alias echoMode: txtMain.echoMode
     property alias text: txtMain.text
 
@@ -52,7 +53,7 @@ FocusScope {
 
     TextBox {
         id: txtMain
-        width: parent.width; height: 30
+        width: parent.width; height: parent.height
         font.pixelSize: 14
 
         echoMode: TextInput.Password
